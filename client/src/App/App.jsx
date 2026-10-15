@@ -7,7 +7,8 @@ import { TOOL_LIST, TOOLS } from "../utils/constants";
 import "./App.scss";
 
 export default function App() {
-  const [activeTool, setActiveTool] = useState(TOOLS.SELECT);
+  const [activeTool, setActiveTool] = useState(TOOLS.RECTANGLE);
+  const [elements, setElements] = useState([]);
 
   useEffect(() => {
     function handleKeyDown(event) {
@@ -19,11 +20,19 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  function addElement(element) {
+    setElements((currentElements) => [...currentElements, element]);
+  }
+
   return (
     <div className="app">
-      <Canvas />
+      <Canvas
+        activeTool={activeTool}
+        elements={elements}
+        onElementAdded={addElement}
+      />
       <Toolbar activeTool={activeTool} onToolChange={setActiveTool} />
-      <Welcome />
+      {elements.length === 0 && <Welcome />}
       <Brand />
     </div>
   );

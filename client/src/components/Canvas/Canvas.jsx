@@ -1,30 +1,81 @@
-import { useEffect, useRef } from "react";
-import { renderGrid } from "../../canvas/renderGrid";
+import { useEffect, useRef, useState } from "react";
+import { renderScene } from "../../canvas/renderScene";
+import { DRAWING_TOOLS, MIN_SHAPE_SIZE } from "../../utils/constants";
+import { createElement } from "../../utils/elements";
 import "./Canvas.scss";
 
-export default function Canvas() {
+function getViewportSize() {
+  return { width: window.innerWidth, height: window.innerHeight };
+}
+
+export default function Canvas({ activeTool, elements, onElementAdded }) {
   const canvasRef = useRef(null);
+  const [viewportSize, setViewportSize] = useState(getViewportSize);
+  const [draftElement, setDraftElement] = useState(null);
+
+  const isDrawingTool = DRAWING_TOOLS.includes(activeTool);
+
+  useEffect(() => {
+    function handleResize() {
+      setViewportSize(getViewportSize());
+    }
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const context = canvas.getContext("2d");
+    const pixelRatio = window.devicePixelRatio || 1;
+    const { width, height } = viewportSize;
 
-    function redraw() {
-      const pixelRatio = window.devicePixelRatio || 1;
-      const width = window.innerWidth;
-      const height = window.innerHeight;
+    canvas.width = Math.round(width * pixelRatio);
+    canvas.height = Math.round(height * pixelRatio);
+    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
-      canvas.width = width * pixelRatio;
-      canvas.height = height * pixelRatio;
-      context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    renderScene(context, width, height, elements, draftElement);
+  }, [viewportSize, elements, draftElement]);
 
-      renderGrid(context, width, height);
-    }
+  function getPointerPosition(event) {
+    const bounds = canvasRef.current.getBoundingClientRect();
+    return { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+  }
 
-    redraw();
-    window.addEventListener("resize", redraw);
-    return () => window.removeEventListener("resize", redraw);
-  }, []);
+  function handlePointerDown(event) {
+    if (!isDrawingTool) return;
 
-  return <canvas ref={canvasRef} className="canvas" />;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const { x, y } = getPointerPosition(event);
+    setDraftElement(createElement(activeTool, x, y));
+  }
+
+  function handlePointerMove(event) {
+    if (!draftElement) return;
+
+    const { x, y } = getPointerPosition(event);
+    setDraftElement({
+      ...draftElement,
+      width: x - draftElement.x,
+      height: y - draftElement.y,
+    });
+  }
+
+  function handlePointerUp() {
+    if (!draftElement) return;
+
+    const size = Math.hypot(draftElement.width, draftElement.height);
+    if (size >= MIN_SHAPE_SIZE) onElementAdded(draftElement);
+    setDraftElement(null);
+  }
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className={`canvas ${isDrawingTool ? "canvas--drawing" : ""}`}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+    />
+  );
 }

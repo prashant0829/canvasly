@@ -10,6 +10,21 @@ export const TOOLS = {
   ERASER: "eraser",
 };
 
+export const DRAWING_TOOLS = [
+  TOOLS.RECTANGLE,
+  TOOLS.DIAMOND,
+  TOOLS.ELLIPSE,
+  TOOLS.LINE,
+];
+
+export const DEFAULT_ELEMENT_STYLE = {
+  strokeColor: "#1f1f2b",
+  strokeWidth: 2,
+  roughness: 1,
+};
+
+export const MIN_SHAPE_SIZE = 4;
+
 export const TOOL_LIST = [
   { id: TOOLS.SELECT, label: "Select", shortcut: "1" },
   { id: TOOLS.RECTANGLE, label: "Rectangle", shortcut: "2" },
