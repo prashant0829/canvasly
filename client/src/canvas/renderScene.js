@@ -13,9 +13,15 @@ export function renderScene(context, width, height, scene) {
     hiddenElementId,
     fadedElementIds,
     eraserTrail,
+    viewport,
+    showGrid,
   } = scene;
 
-  renderGrid(context, width, height);
+  renderGrid(context, width, height, viewport, showGrid);
+
+  context.save();
+  context.translate(viewport.offsetX, viewport.offsetY);
+  context.scale(viewport.zoom, viewport.zoom);
 
   elements
     .filter((element) => element.id !== hiddenElementId)
@@ -28,6 +34,8 @@ export function renderScene(context, width, height, scene) {
   context.globalAlpha = 1;
 
   if (draftElement) renderElement(context, draftElement);
-  renderSelection(context, selectedElements, marquee);
-  renderEraserTrail(context, eraserTrail, performance.now());
+  renderSelection(context, selectedElements, marquee, viewport.zoom);
+  renderEraserTrail(context, eraserTrail, performance.now(), viewport.zoom);
+
+  context.restore();
 }

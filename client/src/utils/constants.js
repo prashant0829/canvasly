@@ -1,4 +1,5 @@
 export const TOOLS = {
+  HAND: "hand",
   SELECT: "select",
   RECTANGLE: "rectangle",
   DIAMOND: "diamond",
@@ -42,6 +43,7 @@ export const THEME_STORAGE_KEY = "canvasly-theme";
 export const MIN_SHAPE_SIZE = 4;
 
 export const TOOL_LIST = [
+  { id: TOOLS.HAND, label: "Hand (pan)", shortcut: "h" },
   { id: TOOLS.SELECT, label: "Select", shortcut: "1" },
   { id: TOOLS.RECTANGLE, label: "Rectangle", shortcut: "2" },
   { id: TOOLS.DIAMOND, label: "Diamond", shortcut: "3" },
@@ -83,6 +85,7 @@ export const INTERACTIONS = {
   RESIZE: "resize",
   MARQUEE: "marquee",
   ERASE: "erase",
+  PAN: "pan",
 };
 
 export const FONT_FAMILY = '"Excalifont", "Caveat", "Comic Sans MS", cursive';
@@ -102,3 +105,10 @@ export const ERASER_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(
     "<circle cx='13' cy='13' r='10' fill='rgba(255,255,255,0.4)' stroke='#1f1f2b' stroke-width='1.6'/>" +
     "</svg>"
 )}") 13 13, crosshair`;
+
+export const DEFAULT_VIEWPORT = { offsetX: 0, offsetY: 0, zoom: 1 };
+export const MIN_ZOOM = 0.1;
+export const MAX_ZOOM = 5;
+export const ZOOM_STEP = 1.2;
+export const WHEEL_ZOOM_SENSITIVITY = 0.01;
+export const MIN_GRID_SPACING = 14;

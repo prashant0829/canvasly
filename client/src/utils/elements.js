@@ -73,17 +73,18 @@ export function moveElement(startElement, deltaX, deltaY) {
 }
 
 // The handle name says which edges follow the pointer (n = top, e = right, s = bottom, w = left).
-function getResizedEdges(startElement, handle, pointer) {
+function getResizedEdges(startElement, handle, pointer, zoom) {
   const bounds = normalizeBounds(startElement);
+  const padding = SELECTION_PADDING / zoom;
   let left = bounds.x;
   let right = bounds.x + bounds.width;
   let top = bounds.y;
   let bottom = bounds.y + bounds.height;
 
-  if (handle.includes("w")) left = pointer.x + SELECTION_PADDING;
-  if (handle.includes("e")) right = pointer.x - SELECTION_PADDING;
-  if (handle.includes("n")) top = pointer.y + SELECTION_PADDING;
-  if (handle.includes("s")) bottom = pointer.y - SELECTION_PADDING;
+  if (handle.includes("w")) left = pointer.x + padding;
+  if (handle.includes("e")) right = pointer.x - padding;
+  if (handle.includes("n")) top = pointer.y + padding;
+  if (handle.includes("s")) bottom = pointer.y - padding;
 
   return { left, right, top, bottom };
 }
@@ -144,8 +145,8 @@ function resizeText(startElement, handle, edges) {
   };
 }
 
-export function resizeElement(startElement, handle, pointer) {
-  const edges = getResizedEdges(startElement, handle, pointer);
+export function resizeElement(startElement, handle, pointer, zoom = 1) {
+  const edges = getResizedEdges(startElement, handle, pointer, zoom);
 
   if (startElement.type === TOOLS.TEXT) return resizeText(startElement, handle, edges);
   if (startElement.type === TOOLS.PEN) return resizePen(startElement, edges);

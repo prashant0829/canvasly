@@ -52,17 +52,17 @@ function getOutlineSegments(element) {
   }
 }
 
-function isPointInsideBounds(element, point) {
+function isPointInsideBounds(element, point, tolerance) {
   const { x, y, width, height } = normalizeBounds(element);
   return (
-    point.x >= x - HIT_TOLERANCE &&
-    point.x <= x + width + HIT_TOLERANCE &&
-    point.y >= y - HIT_TOLERANCE &&
-    point.y <= y + height + HIT_TOLERANCE
+    point.x >= x - tolerance &&
+    point.x <= x + width + tolerance &&
+    point.y >= y - tolerance &&
+    point.y <= y + height + tolerance
   );
 }
 
-function isPointOnEllipse(element, point) {
+function isPointOnEllipse(element, point, tolerance) {
   const bounds = normalizeBounds(element);
   const radiusX = bounds.width / 2;
   const radiusY = bounds.height / 2;
@@ -72,7 +72,7 @@ function isPointOnEllipse(element, point) {
   const offsetY = (point.y - (bounds.y + radiusY)) / radiusY;
   const distanceFromCenter = Math.hypot(offsetX, offsetY);
 
-  return Math.abs(distanceFromCenter - 1) * Math.min(radiusX, radiusY) <= HIT_TOLERANCE;
+  return Math.abs(distanceFromCenter - 1) * Math.min(radiusX, radiusY) <= tolerance;
 }
 
 function isFilled(element) {
@@ -93,31 +93,35 @@ function isPointInsideClosedShape(element, point) {
   return offsetX <= 1 && offsetY <= 1;
 }
 
-export function isPointOnElement(element, point) {
-  if (element.type === TOOLS.TEXT) return isPointInsideBounds(element, point);
+// zoom keeps the clickable area the same size on screen (8px) at any zoom level.
+export function isPointOnElement(element, point, zoom = 1) {
+  const tolerance = HIT_TOLERANCE / zoom;
+
+  if (element.type === TOOLS.TEXT) return isPointInsideBounds(element, point, tolerance);
   if (isFilled(element) && isPointInsideClosedShape(element, point)) return true;
-  if (element.type === TOOLS.ELLIPSE) return isPointOnEllipse(element, point);
+  if (element.type === TOOLS.ELLIPSE) return isPointOnEllipse(element, point, tolerance);
 
   return getOutlineSegments(element).some(
-    ([start, end]) => distanceToSegment(point, start, end) <= HIT_TOLERANCE
+    ([start, end]) => distanceToSegment(point, start, end) <= tolerance
   );
 }
 
 // Last element in the array is drawn on top, so we check from the end.
-export function getElementAtPoint(elements, point) {
+export function getElementAtPoint(elements, point, zoom = 1) {
   for (let index = elements.length - 1; index >= 0; index--) {
-    if (isPointOnElement(elements[index], point)) return elements[index];
+    if (isPointOnElement(elements[index], point, zoom)) return elements[index];
   }
   return null;
 }
 
-export function getSelectionBounds(element) {
+export function getSelectionBounds(element, zoom = 1) {
   const bounds = normalizeBounds(element);
+  const padding = SELECTION_PADDING / zoom;
   return {
-    x: bounds.x - SELECTION_PADDING,
-    y: bounds.y - SELECTION_PADDING,
-    width: bounds.width + SELECTION_PADDING * 2,
-    height: bounds.height + SELECTION_PADDING * 2,
+    x: bounds.x - padding,
+    y: bounds.y - padding,
+    width: bounds.width + padding * 2,
+    height: bounds.height + padding * 2,
   };
 }
 
@@ -138,13 +142,13 @@ export function getHandlePositions(selectionBounds) {
   };
 }
 
-export function getResizeHandleAtPoint(element, point) {
-  const positions = getHandlePositions(getSelectionBounds(element));
+export function getResizeHandleAtPoint(element, point, zoom = 1) {
+  const positions = getHandlePositions(getSelectionBounds(element, zoom));
 
   return (
     RESIZE_HANDLES.find((handle) => {
       const position = positions[handle];
-      return Math.hypot(point.x - position.x, point.y - position.y) <= HANDLE_HIT_RADIUS;
+      return Math.hypot(point.x - position.x, point.y - position.y) <= HANDLE_HIT_RADIUS / zoom;
     }) ?? null
   );
 }

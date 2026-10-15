@@ -12,6 +12,9 @@ const iconProps = {
 };
 
 const ICON_PATHS = {
+  [TOOLS.HAND]: (
+    <path d="M8 13V5.5a1.5 1.5 0 013 0V12m0-6.5v-2a1.5 1.5 0 013 0V12m0-6a1.5 1.5 0 013 0v7a6 6 0 01-6 6h-1.5a6 6 0 01-5-2.7L3 14.5a1.5 1.5 0 012.3-1.9L8 15" />
+  ),
   [TOOLS.SELECT]: <path d="M5 3l14 7-6 2-2 6L5 3z" />,
   [TOOLS.RECTANGLE]: <rect x="4" y="6" width="16" height="12" rx="2" />,
   [TOOLS.DIAMOND]: <path d="M12 3l9 9-9 9-9-9 9-9z" />,

@@ -4,16 +4,20 @@ import Canvas from "../components/Canvas/Canvas";
 import StylePanel from "../components/StylePanel/StylePanel";
 import ThemeToggle from "../components/ThemeToggle/ThemeToggle";
 import Toolbar from "../components/Toolbar/Toolbar";
+import ViewControls from "../components/ViewControls/ViewControls";
 import Welcome from "../components/Welcome/Welcome";
 import {
   CLOSED_SHAPE_TOOLS,
   DEFAULT_ELEMENT_STYLE,
+  DEFAULT_VIEWPORT,
   ROUGH_TOOLS,
   STYLE_PANEL_TOOLS,
   THEME_STORAGE_KEY,
   TOOL_LIST,
   TOOLS,
+  ZOOM_STEP,
 } from "../utils/constants";
+import { zoomViewportAt } from "../utils/viewport";
 import "./App.scss";
 
 function getInitialTheme() {
@@ -32,6 +36,8 @@ export default function App() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [currentStyle, setCurrentStyle] = useState(DEFAULT_ELEMENT_STYLE);
   const [theme, setTheme] = useState(getInitialTheme);
+  const [viewport, setViewport] = useState(DEFAULT_VIEWPORT);
+  const [showGrid, setShowGrid] = useState(true);
 
   const selectedElements = elements.filter((element) => selectedIds.includes(element.id));
   const targetTypes = selectedElements.length
@@ -54,6 +60,12 @@ export default function App() {
       // not being able to remember the theme is fine
     }
   }, [theme]);
+
+  // Buttons and keys zoom around the middle of the screen; the wheel zooms at the pointer.
+  function zoomTo(getNextZoom) {
+    const center = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    setViewport((current) => zoomViewportAt(current, center, getNextZoom(current.zoom)));
+  }
 
   function changeTool(tool) {
     setActiveTool(tool);
@@ -87,6 +99,22 @@ export default function App() {
   useEffect(() => {
     function handleKeyDown(event) {
       if (event.target instanceof HTMLTextAreaElement) return;
+      if (event.metaKey || event.ctrlKey) return;
+
+      if (event.key === "+" || event.key === "=") {
+        zoomTo((zoom) => zoom * ZOOM_STEP);
+        return;
+      }
+
+      if (event.key === "-") {
+        zoomTo((zoom) => zoom / ZOOM_STEP);
+        return;
+      }
+
+      if (event.key === "0") {
+        zoomTo(() => 1);
+        return;
+      }
 
       if (event.key === "Delete" || event.key === "Backspace") {
         deleteSelectedElements();
@@ -98,7 +126,7 @@ export default function App() {
         return;
       }
 
-      const matchedTool = TOOL_LIST.find((tool) => tool.shortcut === event.key);
+      const matchedTool = TOOL_LIST.find((tool) => tool.shortcut === event.key.toLowerCase());
       if (matchedTool) changeTool(matchedTool.id);
     }
 
@@ -112,6 +140,9 @@ export default function App() {
         activeTool={activeTool}
         currentStyle={currentStyle}
         theme={theme}
+        viewport={viewport}
+        showGrid={showGrid}
+        onViewportChange={setViewport}
         elements={elements}
         selectedIds={selectedIds}
         onElementAdded={addElement}
@@ -125,6 +156,14 @@ export default function App() {
       <ThemeToggle
         theme={theme}
         onToggle={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
+      />
+      <ViewControls
+        zoom={viewport.zoom}
+        showGrid={showGrid}
+        onZoomIn={() => zoomTo((zoom) => zoom * ZOOM_STEP)}
+        onZoomOut={() => zoomTo((zoom) => zoom / ZOOM_STEP)}
+        onResetZoom={() => zoomTo(() => 1)}
+        onToggleGrid={() => setShowGrid((current) => !current)}
       />
       {elements.length === 0 && <Welcome />}
       <Brand />

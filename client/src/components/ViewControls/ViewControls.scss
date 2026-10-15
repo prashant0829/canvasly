@@ -1,0 +1,59 @@
+@use "../../styles/variables" as *;
+
+.view-controls {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px;
+  background: var(--color-surface);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border);
+  border-radius: $radius-large;
+  box-shadow: $shadow-floating;
+
+  &__button,
+  &__zoom {
+    display: grid;
+    place-items: center;
+    height: 36px;
+    border: none;
+    border-radius: $radius-medium;
+    background: transparent;
+    color: var(--color-text);
+    font-family: $font-ui;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background $transition-fast, color $transition-fast;
+
+    &:hover {
+      background: var(--color-hover);
+    }
+  }
+
+  &__button {
+    width: 36px;
+    font-size: 20px;
+
+    &.is-active {
+      background: var(--color-accent-soft);
+      color: var(--color-accent);
+    }
+  }
+
+  &__zoom {
+    min-width: 58px;
+    padding: 0 6px;
+    font-size: 13px;
+  }
+
+  &__divider {
+    width: 1px;
+    height: 20px;
+    margin: 0 4px;
+    background: var(--color-border);
+  }
+}

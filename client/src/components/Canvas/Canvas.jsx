@@ -9,6 +9,7 @@ import {
   INTERACTIONS,
   MIN_SHAPE_SIZE,
   TOOLS,
+  WHEEL_ZOOM_SENSITIVITY,
 } from "../../utils/constants";
 import {
   createElement,
@@ -25,10 +26,11 @@ import {
   isPointOnElement,
 } from "../../utils/hitTest";
 import { getFont, measureText } from "../../utils/text";
+import { screenToScene, zoomViewportAt } from "../../utils/viewport";
 import TextEditor from "../TextEditor/TextEditor";
+import "./Canvas.scss";
 
 const ERASER_SAMPLE_SPACING = 4;
-import "./Canvas.scss";
 
 function getViewportSize() {
   return { width: window.innerWidth, height: window.innerHeight };
@@ -38,6 +40,9 @@ export default function Canvas({
   activeTool,
   currentStyle,
   theme,
+  viewport,
+  showGrid,
+  onViewportChange,
   elements,
   selectedIds,
   onElementAdded,
@@ -54,12 +59,16 @@ export default function Canvas({
   const [isFontLoaded, setIsFontLoaded] = useState(false);
   const [pendingEraseIds, setPendingEraseIds] = useState([]);
   const [eraserTrail, setEraserTrail] = useState([]);
+  const [isSpaceDown, setIsSpaceDown] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
   const pendingEraseIdsRef = useRef(new Set());
 
   const isDrawingTool = DRAWING_TOOLS.includes(activeTool);
   const isSelectTool = activeTool === TOOLS.SELECT;
   const isEraserTool = activeTool === TOOLS.ERASER;
   const isTextTool = activeTool === TOOLS.TEXT;
+  const isHandTool = activeTool === TOOLS.HAND;
+  const { zoom } = viewport;
 
   const selectedElements = useMemo(
     () => elements.filter((element) => selectedIds.includes(element.id)),
@@ -74,6 +83,56 @@ export default function Canvas({
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // Holding Space turns any tool into the hand tool, like in Excalidraw.
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.code !== "Space" || event.target instanceof HTMLTextAreaElement) return;
+      event.preventDefault();
+      setIsSpaceDown(true);
+    }
+
+    function handleKeyUp(event) {
+      if (event.code !== "Space") return;
+      setIsSpaceDown(false);
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
+
+  // Wheel scrolls the board; Ctrl/Cmd + wheel (also trackpad pinch) zooms at the pointer.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+
+    function handleWheel(event) {
+      event.preventDefault();
+
+      if (event.ctrlKey || event.metaKey) {
+        const bounds = canvas.getBoundingClientRect();
+        const anchor = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+        const zoomFactor = Math.exp(-event.deltaY * WHEEL_ZOOM_SENSITIVITY);
+
+        onViewportChange((current) =>
+          zoomViewportAt(current, anchor, current.zoom * zoomFactor)
+        );
+        return;
+      }
+
+      onViewportChange((current) => ({
+        ...current,
+        offsetX: current.offsetX - event.deltaX,
+        offsetY: current.offsetY - event.deltaY,
+      }));
+    }
+
+    canvas.addEventListener("wheel", handleWheel, { passive: false });
+    return () => canvas.removeEventListener("wheel", handleWheel);
+  }, [onViewportChange]);
 
   // Canvas text can't draw a web font until it has loaded, so redraw once it is ready.
   useEffect(() => {
@@ -111,8 +170,12 @@ export default function Canvas({
       hiddenElementId: textEditor?.elementId ?? null,
       fadedElementIds: pendingEraseIds,
       eraserTrail,
+      viewport,
+      showGrid,
     });
   }, [
+    viewport,
+    showGrid,
     viewportSize,
     elements,
     draftElement,
@@ -124,9 +187,14 @@ export default function Canvas({
     eraserTrail,
   ]);
 
-  function getPointerPosition(event) {
+  function getScreenPosition(event) {
     const bounds = canvasRef.current.getBoundingClientRect();
     return { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+  }
+
+  // Shapes live in scene coordinates, so every pointer position is converted before use.
+  function getPointerPosition(event) {
+    return screenToScene(getScreenPosition(event), viewport);
   }
 
   function openNewTextEditor(point) {
@@ -188,7 +256,7 @@ export default function Canvas({
       };
 
       elements.forEach((element) => {
-        if (!pendingIds.has(element.id) && isPointOnElement(element, point)) {
+        if (!pendingIds.has(element.id) && isPointOnElement(element, point, zoom)) {
           pendingIds.add(element.id);
           hasNewHit = true;
         }
@@ -214,7 +282,7 @@ export default function Canvas({
 
   function startSelectInteraction(point, isShiftPressed) {
     if (selectedElements.length === 1) {
-      const handle = getResizeHandleAtPoint(selectedElements[0], point);
+      const handle = getResizeHandleAtPoint(selectedElements[0], point, zoom);
       if (handle) {
         interactionRef.current = {
           type: INTERACTIONS.RESIZE,
@@ -225,7 +293,7 @@ export default function Canvas({
       }
     }
 
-    const hitElement = getElementAtPoint(elements, point);
+    const hitElement = getElementAtPoint(elements, point, zoom);
 
     if (hitElement) {
       let nextSelectedIds = selectedIds;
@@ -257,14 +325,14 @@ export default function Canvas({
     if (!isSelectTool) return;
 
     if (selectedElements.length === 1) {
-      const handle = getResizeHandleAtPoint(selectedElements[0], point);
+      const handle = getResizeHandleAtPoint(selectedElements[0], point, zoom);
       if (handle) {
         setHoverCursor(HANDLE_CURSORS[handle]);
         return;
       }
     }
 
-    setHoverCursor(getElementAtPoint(elements, point) ? "move" : "default");
+    setHoverCursor(getElementAtPoint(elements, point, zoom) ? "move" : "default");
   }
 
   function handlePointerDown(event) {
@@ -272,6 +340,18 @@ export default function Canvas({
     if (textEditor) return;
 
     const point = getPointerPosition(event);
+
+    const shouldPan = isHandTool || isSpaceDown || event.button === 1;
+    if (shouldPan) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+      interactionRef.current = {
+        type: INTERACTIONS.PAN,
+        startScreen: getScreenPosition(event),
+        startViewport: viewport,
+      };
+      setIsPanning(true);
+      return;
+    }
 
     if (isTextTool) {
       openNewTextEditor(point);
@@ -295,8 +375,18 @@ export default function Canvas({
     startSelectInteraction(point, event.shiftKey);
   }
 
-  function continueInteraction(interaction, point) {
+  function continueInteraction(interaction, point, screenPoint) {
     switch (interaction.type) {
+      case INTERACTIONS.PAN:
+        onViewportChange({
+          ...interaction.startViewport,
+          offsetX:
+            interaction.startViewport.offsetX + screenPoint.x - interaction.startScreen.x,
+          offsetY:
+            interaction.startViewport.offsetY + screenPoint.y - interaction.startScreen.y,
+        });
+        break;
+
       case INTERACTIONS.MOVE: {
         const deltaX = point.x - interaction.startPoint.x;
         const deltaY = point.y - interaction.startPoint.y;
@@ -316,7 +406,7 @@ export default function Canvas({
         onElementsChange(
           elements.map((element) =>
             element.id === interaction.startElement.id
-              ? resizeElement(interaction.startElement, interaction.handle, point)
+              ? resizeElement(interaction.startElement, interaction.handle, point, zoom)
               : element
           )
         );
@@ -356,7 +446,7 @@ export default function Canvas({
     }
 
     if (interactionRef.current) {
-      continueInteraction(interactionRef.current, point);
+      continueInteraction(interactionRef.current, point, getScreenPosition(event));
       return;
     }
 
@@ -376,6 +466,7 @@ export default function Canvas({
     if (interactionRef.current?.type === INTERACTIONS.ERASE) finishErasing();
 
     interactionRef.current = null;
+    setIsPanning(false);
     setMarquee(null);
   }
 
@@ -383,13 +474,15 @@ export default function Canvas({
     if (!isSelectTool || textEditor) return;
 
     const point = getPointerPosition(event);
-    const hitElement = getElementAtPoint(elements, point);
+    const hitElement = getElementAtPoint(elements, point, zoom);
 
     if (!hitElement) openNewTextEditor(point);
     else if (hitElement.type === TOOLS.TEXT) openExistingTextEditor(hitElement);
   }
 
   function getCursor() {
+    if (isPanning) return "grabbing";
+    if (isHandTool || isSpaceDown) return "grab";
     if (isEraserTool) return ERASER_CURSOR;
     if (isDrawingTool) return "crosshair";
     if (isTextTool) return "text";
@@ -411,10 +504,10 @@ export default function Canvas({
       {textEditor && (
         <TextEditor
           key={textEditor.elementId ?? "new"}
-          x={textEditor.x}
-          y={textEditor.y}
+          x={textEditor.x * zoom + viewport.offsetX}
+          y={textEditor.y * zoom + viewport.offsetY}
           initialText={textEditor.text}
-          fontSize={textEditor.fontSize}
+          fontSize={textEditor.fontSize * zoom}
           color={textEditor.color}
           isDark={theme === "dark"}
           onCommit={commitText}
