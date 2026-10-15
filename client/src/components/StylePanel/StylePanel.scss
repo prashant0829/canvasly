@@ -5,6 +5,8 @@
   top: 90px;
   left: 20px;
   width: 208px;
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
   padding: 14px;
   display: flex;
   flex-direction: column;

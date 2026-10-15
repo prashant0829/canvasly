@@ -152,3 +152,13 @@ export function resizeElement(startElement, handle, pointer, zoom = 1) {
   if (startElement.type === TOOLS.PEN) return resizePen(startElement, edges);
   return resizeBox(startElement, edges);
 }
+
+// Copies get new ids (so they are separate shapes) and sit slightly offset from the originals.
+export function duplicateElements(elements, offset) {
+  return elements.map((element) => ({
+    ...element,
+    id: crypto.randomUUID(),
+    x: element.x + offset,
+    y: element.y + offset,
+  }));
+}

@@ -13,6 +13,13 @@ const ROUGHNESS_PATHS = {
   2: "M3 12q3-6 6 0t6 0t6 0",
 };
 
+const LAYER_BUTTONS = [
+  { action: "sendToBack", label: "Send to back", symbol: "⤓" },
+  { action: "sendBackward", label: "Send backward", symbol: "↓" },
+  { action: "bringForward", label: "Bring forward", symbol: "↑" },
+  { action: "bringToFront", label: "Bring to front", symbol: "⤒" },
+];
+
 function Section({ title, children }) {
   return (
     <section className="style-panel__section">
@@ -51,7 +58,7 @@ function OptionButton({ isActive, label, onClick, children }) {
   );
 }
 
-export default function StylePanel({ style, controls, onChange }) {
+export default function StylePanel({ style, controls, onChange, onLayerChange }) {
   return (
     <aside className="style-panel" aria-label="Style">
       <Section title="Stroke">
@@ -146,6 +153,21 @@ export default function StylePanel({ style, controls, onChange }) {
           aria-label="Opacity"
         />
       </section>
+
+      {controls.showLayers && (
+        <Section title="Layers">
+          {LAYER_BUTTONS.map(({ action, label, symbol }) => (
+            <OptionButton
+              key={action}
+              label={label}
+              isActive={false}
+              onClick={() => onLayerChange(action)}
+            >
+              {symbol}
+            </OptionButton>
+          ))}
+        </Section>
+      )}
     </aside>
   );
 }

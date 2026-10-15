@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Brand from "../components/Brand/Brand";
 import Canvas from "../components/Canvas/Canvas";
 import StylePanel from "../components/StylePanel/StylePanel";
@@ -6,19 +6,40 @@ import ThemeToggle from "../components/ThemeToggle/ThemeToggle";
 import Toolbar from "../components/Toolbar/Toolbar";
 import ViewControls from "../components/ViewControls/ViewControls";
 import Welcome from "../components/Welcome/Welcome";
+import { useElementsHistory } from "../hooks/useElementsHistory";
+import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import {
   CLOSED_SHAPE_TOOLS,
+  COALESCE_INTERVAL_MS,
   DEFAULT_ELEMENT_STYLE,
   DEFAULT_VIEWPORT,
+  NUDGE_STEP,
+  NUDGE_STEP_LARGE,
+  PASTE_OFFSET,
   ROUGH_TOOLS,
   STYLE_PANEL_TOOLS,
   THEME_STORAGE_KEY,
-  TOOL_LIST,
   TOOLS,
   ZOOM_STEP,
 } from "../utils/constants";
+import { duplicateElements, moveElement } from "../utils/elements";
+import { bringForward, bringToFront, sendBackward, sendToBack } from "../utils/layers";
 import { zoomViewportAt } from "../utils/viewport";
 import "./App.scss";
+
+const LAYER_ACTIONS = {
+  bringToFront,
+  bringForward,
+  sendBackward,
+  sendToBack,
+};
+
+const ARROW_KEY_DIRECTIONS = {
+  arrowup: { x: 0, y: -1 },
+  arrowdown: { x: 0, y: 1 },
+  arrowleft: { x: -1, y: 0 },
+  arrowright: { x: 1, y: 0 },
+};
 
 function getInitialTheme() {
   try {
@@ -32,12 +53,17 @@ function getInitialTheme() {
 
 export default function App() {
   const [activeTool, setActiveTool] = useState(TOOLS.SELECT);
-  const [elements, setElements] = useState([]);
+  const { elements, setElements, checkpoint, undo, redo, canUndo, canRedo } =
+    useElementsHistory();
   const [selectedIds, setSelectedIds] = useState([]);
   const [currentStyle, setCurrentStyle] = useState(DEFAULT_ELEMENT_STYLE);
   const [theme, setTheme] = useState(getInitialTheme);
   const [viewport, setViewport] = useState(DEFAULT_VIEWPORT);
   const [showGrid, setShowGrid] = useState(true);
+
+  const clipboardRef = useRef([]);
+  const pasteCountRef = useRef(0);
+  const lastCoalescedCheckpointRef = useRef(0);
 
   const selectedElements = elements.filter((element) => selectedIds.includes(element.id));
   const targetTypes = selectedElements.length
@@ -50,6 +76,7 @@ export default function App() {
     showBackground: targetTypes.some((type) => CLOSED_SHAPE_TOOLS.includes(type)),
     showStrokeWidth: targetTypes.some((type) => type !== TOOLS.TEXT),
     showRoughness: targetTypes.some((type) => ROUGH_TOOLS.includes(type)),
+    showLayers: selectedElements.length > 0,
   };
 
   useEffect(() => {
@@ -60,6 +87,13 @@ export default function App() {
       // not being able to remember the theme is fine
     }
   }, [theme]);
+
+  // A burst of changes (dragging a slider, holding an arrow key) becomes one undo step.
+  function checkpointCoalesced() {
+    const now = Date.now();
+    if (now - lastCoalescedCheckpointRef.current > COALESCE_INTERVAL_MS) checkpoint();
+    lastCoalescedCheckpointRef.current = now;
+  }
 
   // Buttons and keys zoom around the middle of the screen; the wheel zooms at the pointer.
   function zoomTo(getNextZoom) {
@@ -74,12 +108,16 @@ export default function App() {
 
   // Like Excalidraw: the new shape is selected and the tool returns to Select.
   function addElement(element) {
+    checkpoint();
     setElements((currentElements) => [...currentElements, element]);
     setSelectedIds([element.id]);
     setActiveTool(TOOLS.SELECT);
   }
 
   function deleteSelectedElements() {
+    if (selectedIds.length === 0) return;
+
+    checkpoint();
     setElements((currentElements) =>
       currentElements.filter((element) => !selectedIds.includes(element.id))
     );
@@ -89,6 +127,9 @@ export default function App() {
   // A style change applies to the selected shapes and becomes the default for new ones.
   function updateStyle(stylePatch) {
     setCurrentStyle((style) => ({ ...style, ...stylePatch }));
+    if (selectedIds.length === 0) return;
+
+    checkpointCoalesced();
     setElements((currentElements) =>
       currentElements.map((element) =>
         selectedIds.includes(element.id) ? { ...element, ...stylePatch } : element
@@ -96,43 +137,101 @@ export default function App() {
     );
   }
 
-  useEffect(() => {
-    function handleKeyDown(event) {
-      if (event.target instanceof HTMLTextAreaElement) return;
-      if (event.metaKey || event.ctrlKey) return;
+  function applyHistoryResult(restoredElements) {
+    if (!restoredElements) return;
+    setSelectedIds((ids) =>
+      ids.filter((id) => restoredElements.some((element) => element.id === id))
+    );
+  }
 
-      if (event.key === "+" || event.key === "=") {
-        zoomTo((zoom) => zoom * ZOOM_STEP);
-        return;
-      }
+  function copySelection() {
+    if (selectedElements.length === 0) return;
+    clipboardRef.current = selectedElements;
+    pasteCountRef.current = 0;
+  }
 
-      if (event.key === "-") {
-        zoomTo((zoom) => zoom / ZOOM_STEP);
-        return;
-      }
+  function addCopies(sourceElements, offset) {
+    const copies = duplicateElements(sourceElements, offset);
 
-      if (event.key === "0") {
-        zoomTo(() => 1);
-        return;
-      }
+    checkpoint();
+    setElements((currentElements) => [...currentElements, ...copies]);
+    setSelectedIds(copies.map((element) => element.id));
+    setActiveTool(TOOLS.SELECT);
+  }
 
-      if (event.key === "Delete" || event.key === "Backspace") {
-        deleteSelectedElements();
-        return;
-      }
+  function pasteClipboard() {
+    if (clipboardRef.current.length === 0) return;
 
-      if (event.key === "Escape") {
-        setSelectedIds([]);
-        return;
-      }
+    pasteCountRef.current += 1;
+    addCopies(clipboardRef.current, PASTE_OFFSET * pasteCountRef.current);
+  }
 
-      const matchedTool = TOOL_LIST.find((tool) => tool.shortcut === event.key.toLowerCase());
-      if (matchedTool) changeTool(matchedTool.id);
-    }
+  function duplicateSelection() {
+    if (selectedElements.length === 0) return;
+    addCopies(selectedElements, PASTE_OFFSET);
+  }
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedIds]);
+  function cutSelection() {
+    copySelection();
+    deleteSelectedElements();
+  }
+
+  function selectAll() {
+    setActiveTool(TOOLS.SELECT);
+    setSelectedIds(elements.map((element) => element.id));
+  }
+
+  function nudgeSelection(key, event) {
+    if (selectedIds.length === 0) return;
+
+    const direction = ARROW_KEY_DIRECTIONS[key];
+    const step = event.shiftKey ? NUDGE_STEP_LARGE : NUDGE_STEP;
+
+    checkpointCoalesced();
+    setElements((currentElements) =>
+      currentElements.map((element) =>
+        selectedIds.includes(element.id)
+          ? moveElement(element, direction.x * step, direction.y * step)
+          : element
+      )
+    );
+  }
+
+  function changeLayer(layerAction) {
+    if (selectedIds.length === 0) return;
+
+    checkpoint();
+    setElements((currentElements) =>
+      LAYER_ACTIONS[layerAction](currentElements, selectedIds)
+    );
+  }
+
+  const undoChange = () => applyHistoryResult(undo());
+  const redoChange = () => applyHistoryResult(redo());
+  const zoomIn = () => zoomTo((zoom) => zoom * ZOOM_STEP);
+  const zoomOut = () => zoomTo((zoom) => zoom / ZOOM_STEP);
+  const resetZoom = () => zoomTo(() => 1);
+
+  useKeyboardShortcuts({
+    undo: undoChange,
+    redo: redoChange,
+    copy: copySelection,
+    cut: cutSelection,
+    paste: pasteClipboard,
+    duplicate: duplicateSelection,
+    selectAll,
+    delete: deleteSelectedElements,
+    clearSelection: () => setSelectedIds([]),
+    nudge: nudgeSelection,
+    bringToFront: () => changeLayer("bringToFront"),
+    sendToBack: () => changeLayer("sendToBack"),
+    bringForward: () => changeLayer("bringForward"),
+    sendBackward: () => changeLayer("sendBackward"),
+    zoomIn,
+    zoomOut,
+    resetZoom,
+    selectTool: changeTool,
+  });
 
   return (
     <div className="app">
@@ -148,10 +247,16 @@ export default function App() {
         onElementAdded={addElement}
         onElementsChange={setElements}
         onSelectionChange={setSelectedIds}
+        onCheckpoint={checkpoint}
       />
       <Toolbar activeTool={activeTool} onToolChange={changeTool} />
       {isStylePanelVisible && (
-        <StylePanel style={panelStyle} controls={panelControls} onChange={updateStyle} />
+        <StylePanel
+          style={panelStyle}
+          controls={panelControls}
+          onChange={updateStyle}
+          onLayerChange={changeLayer}
+        />
       )}
       <ThemeToggle
         theme={theme}
@@ -160,9 +265,13 @@ export default function App() {
       <ViewControls
         zoom={viewport.zoom}
         showGrid={showGrid}
-        onZoomIn={() => zoomTo((zoom) => zoom * ZOOM_STEP)}
-        onZoomOut={() => zoomTo((zoom) => zoom / ZOOM_STEP)}
-        onResetZoom={() => zoomTo(() => 1)}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undoChange}
+        onRedo={redoChange}
+        onZoomIn={zoomIn}
+        onZoomOut={zoomOut}
+        onResetZoom={resetZoom}
         onToggleGrid={() => setShowGrid((current) => !current)}
       />
       {elements.length === 0 && <Welcome />}

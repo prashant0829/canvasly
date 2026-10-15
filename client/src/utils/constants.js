@@ -112,3 +112,9 @@ export const MAX_ZOOM = 5;
 export const ZOOM_STEP = 1.2;
 export const WHEEL_ZOOM_SENSITIVITY = 0.01;
 export const MIN_GRID_SPACING = 14;
+
+export const MAX_HISTORY_SIZE = 100;
+export const COALESCE_INTERVAL_MS = 800;
+export const PASTE_OFFSET = 20;
+export const NUDGE_STEP = 1;
+export const NUDGE_STEP_LARGE = 10;

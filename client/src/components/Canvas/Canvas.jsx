@@ -48,6 +48,7 @@ export default function Canvas({
   onElementAdded,
   onElementsChange,
   onSelectionChange,
+  onCheckpoint,
 }) {
   const canvasRef = useRef(null);
   const interactionRef = useRef(null);
@@ -225,6 +226,7 @@ export default function Canvas({
 
     if (editor.elementId) {
       const isEmpty = text.trim() === "";
+      if (text !== editor.text) onCheckpoint();
       onElementsChange((currentElements) =>
         isEmpty
           ? currentElements.filter((element) => element.id !== editor.elementId)
@@ -271,6 +273,7 @@ export default function Canvas({
     const idsToDelete = pendingEraseIdsRef.current;
 
     if (idsToDelete.size > 0) {
+      onCheckpoint();
       onElementsChange((currentElements) =>
         currentElements.filter((element) => !idsToDelete.has(element.id))
       );
@@ -375,6 +378,13 @@ export default function Canvas({
     startSelectInteraction(point, event.shiftKey);
   }
 
+  // One drag = one undo step: save the "before" state only when the first real change happens.
+  function saveCheckpointOnce(interaction) {
+    if (interaction.hasCheckpoint) return;
+    interaction.hasCheckpoint = true;
+    onCheckpoint();
+  }
+
   function continueInteraction(interaction, point, screenPoint) {
     switch (interaction.type) {
       case INTERACTIONS.PAN:
@@ -390,6 +400,8 @@ export default function Canvas({
       case INTERACTIONS.MOVE: {
         const deltaX = point.x - interaction.startPoint.x;
         const deltaY = point.y - interaction.startPoint.y;
+        if (deltaX === 0 && deltaY === 0) break;
+        saveCheckpointOnce(interaction);
 
         onElementsChange(
           elements.map((element) => {
@@ -403,6 +415,7 @@ export default function Canvas({
       }
 
       case INTERACTIONS.RESIZE:
+        saveCheckpointOnce(interaction);
         onElementsChange(
           elements.map((element) =>
             element.id === interaction.startElement.id

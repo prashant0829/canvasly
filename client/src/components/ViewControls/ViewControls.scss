@@ -29,8 +29,13 @@
     cursor: pointer;
     transition: background $transition-fast, color $transition-fast;
 
-    &:hover {
+    &:hover:not(:disabled) {
       background: var(--color-hover);
+    }
+
+    &:disabled {
+      opacity: 0.35;
+      cursor: default;
     }
   }
 
