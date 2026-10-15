@@ -1,0 +1,12 @@
+@use "../../styles/variables" as *;
+
+.brand {
+  position: absolute;
+  left: 22px;
+  bottom: 18px;
+  font-family: $font-handwritten;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-accent);
+  pointer-events: none;
+}

@@ -1,0 +1,59 @@
+@use "../../styles/variables" as *;
+
+.toolbar {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  background: var(--color-surface);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border);
+  border-radius: $radius-large;
+  box-shadow: $shadow-floating;
+
+  &__button {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border: none;
+    border-radius: $radius-medium;
+    background: transparent;
+    color: var(--color-text);
+    cursor: pointer;
+    transition: background $transition-fast, color $transition-fast, transform $transition-fast;
+
+    &:hover {
+      background: var(--color-hover);
+    }
+
+    &:active {
+      transform: scale(0.92);
+    }
+
+    &.is-active {
+      background: var(--color-accent-soft);
+      color: var(--color-accent);
+    }
+  }
+
+  &__shortcut {
+    position: absolute;
+    right: 5px;
+    bottom: 3px;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    opacity: 0.7;
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    max-width: calc(100vw - 24px);
+    overflow-x: auto;
+  }
+}

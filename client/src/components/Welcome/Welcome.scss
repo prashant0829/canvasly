@@ -1,0 +1,29 @@
+@use "../../styles/variables" as *;
+
+.welcome {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  pointer-events: none;
+  font-family: $font-handwritten;
+
+  &__title {
+    margin: 0;
+    font-size: 84px;
+    font-weight: 700;
+    color: var(--color-text);
+
+    @media (max-width: $breakpoint-mobile) {
+      font-size: 56px;
+    }
+  }
+
+  &__subtitle {
+    margin: 4px 0 0;
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+  }
+}

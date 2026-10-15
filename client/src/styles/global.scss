@@ -1,0 +1,27 @@
+@use "variables" as *;
+
+:root {
+  --color-background: #faf9f7;
+  --color-surface: rgba(255, 255, 255, 0.82);
+  --color-border: rgba(20, 20, 30, 0.08);
+  --color-text: #1f1f2b;
+  --color-text-muted: #8b8a93;
+  --color-accent: #6d5efc;
+  --color-accent-soft: rgba(109, 94, 252, 0.12);
+  --color-hover: rgba(20, 20, 40, 0.06);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: $font-ui;
+}
