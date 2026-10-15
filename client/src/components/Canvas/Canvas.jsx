@@ -4,6 +4,8 @@ import {
   DEFAULT_ELEMENT_STYLE,
   DEFAULT_FONT_SIZE,
   DRAWING_TOOLS,
+  ERASER_CURSOR,
+  ERASER_TRAIL_LIFETIME_MS,
   HANDLE_CURSORS,
   INTERACTIONS,
   MIN_SHAPE_SIZE,
@@ -25,6 +27,8 @@ import {
 } from "../../utils/hitTest";
 import { getFont, measureText } from "../../utils/text";
 import TextEditor from "../TextEditor/TextEditor";
+
+const ERASER_SAMPLE_SPACING = 4;
 import "./Canvas.scss";
 
 function getViewportSize() {
@@ -47,6 +51,9 @@ export default function Canvas({
   const [hoverCursor, setHoverCursor] = useState("default");
   const [textEditor, setTextEditor] = useState(null);
   const [isFontLoaded, setIsFontLoaded] = useState(false);
+  const [pendingEraseIds, setPendingEraseIds] = useState([]);
+  const [eraserTrail, setEraserTrail] = useState([]);
+  const pendingEraseIdsRef = useRef(new Set());
 
   const isDrawingTool = DRAWING_TOOLS.includes(activeTool);
   const isSelectTool = activeTool === TOOLS.SELECT;
@@ -72,6 +79,19 @@ export default function Canvas({
     document.fonts.load(getFont(DEFAULT_FONT_SIZE), "Aa").then(() => setIsFontLoaded(true));
   }, []);
 
+  // Keep redrawing while the trail has points, so it can fade out smoothly.
+  useEffect(() => {
+    if (eraserTrail.length === 0) return;
+
+    const now = performance.now();
+    const frameId = requestAnimationFrame(() => {
+      setEraserTrail((points) =>
+        points.filter((point) => now - point.time < ERASER_TRAIL_LIFETIME_MS)
+      );
+    });
+    return () => cancelAnimationFrame(frameId);
+  }, [eraserTrail]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     const context = canvas.getContext("2d");
@@ -88,8 +108,20 @@ export default function Canvas({
       selectedElements,
       marquee,
       hiddenElementId: textEditor?.elementId ?? null,
+      fadedElementIds: pendingEraseIds,
+      eraserTrail,
     });
-  }, [viewportSize, elements, draftElement, selectedElements, marquee, textEditor, isFontLoaded]);
+  }, [
+    viewportSize,
+    elements,
+    draftElement,
+    selectedElements,
+    marquee,
+    textEditor,
+    isFontLoaded,
+    pendingEraseIds,
+    eraserTrail,
+  ]);
 
   function getPointerPosition(event) {
     const bounds = canvasRef.current.getBoundingClientRect();
@@ -139,10 +171,42 @@ export default function Canvas({
     }
   }
 
-  function eraseAt(point) {
-    onElementsChange((currentElements) =>
-      currentElements.filter((element) => !isPointOnElement(element, point))
-    );
+  // Shapes the eraser touches fade out now and are only deleted when the pointer is released.
+  function eraseAlong(from, to) {
+    const distance = Math.hypot(to.x - from.x, to.y - from.y);
+    const steps = Math.max(1, Math.ceil(distance / ERASER_SAMPLE_SPACING));
+    const pendingIds = pendingEraseIdsRef.current;
+    let hasNewHit = false;
+
+    for (let step = 0; step <= steps; step++) {
+      const point = {
+        x: from.x + ((to.x - from.x) * step) / steps,
+        y: from.y + ((to.y - from.y) * step) / steps,
+      };
+
+      elements.forEach((element) => {
+        if (!pendingIds.has(element.id) && isPointOnElement(element, point)) {
+          pendingIds.add(element.id);
+          hasNewHit = true;
+        }
+      });
+    }
+
+    if (hasNewHit) setPendingEraseIds([...pendingIds]);
+    setEraserTrail((points) => [...points, { x: to.x, y: to.y, time: performance.now() }]);
+  }
+
+  function finishErasing() {
+    const idsToDelete = pendingEraseIdsRef.current;
+
+    if (idsToDelete.size > 0) {
+      onElementsChange((currentElements) =>
+        currentElements.filter((element) => !idsToDelete.has(element.id))
+      );
+    }
+
+    pendingEraseIdsRef.current = new Set();
+    setPendingEraseIds([]);
   }
 
   function startSelectInteraction(point, isShiftPressed) {
@@ -220,8 +284,8 @@ export default function Canvas({
     }
 
     if (isEraserTool) {
-      interactionRef.current = { type: INTERACTIONS.ERASE };
-      eraseAt(point);
+      interactionRef.current = { type: INTERACTIONS.ERASE, lastPoint: point };
+      eraseAlong(point, point);
       return;
     }
 
@@ -274,7 +338,8 @@ export default function Canvas({
       }
 
       case INTERACTIONS.ERASE:
-        eraseAt(point);
+        eraseAlong(interaction.lastPoint, point);
+        interaction.lastPoint = point;
         break;
     }
   }
@@ -305,6 +370,8 @@ export default function Canvas({
       setDraftElement(null);
     }
 
+    if (interactionRef.current?.type === INTERACTIONS.ERASE) finishErasing();
+
     interactionRef.current = null;
     setMarquee(null);
   }
@@ -320,7 +387,8 @@ export default function Canvas({
   }
 
   function getCursor() {
-    if (isDrawingTool || isEraserTool) return "crosshair";
+    if (isEraserTool) return ERASER_CURSOR;
+    if (isDrawingTool) return "crosshair";
     if (isTextTool) return "text";
     if (isSelectTool) return hoverCursor;
     return "default";

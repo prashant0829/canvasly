@@ -80,3 +80,11 @@ export const ARROW_HEAD_LENGTH = 18;
 export const ARROW_HEAD_ANGLE = Math.PI / 6;
 
 export const MIN_POINT_DISTANCE = 2;
+
+export const ERASER_TRAIL_LIFETIME_MS = 350;
+export const ERASER_FADED_OPACITY = 0.2;
+export const ERASER_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(
+  "<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26'>" +
+    "<circle cx='13' cy='13' r='10' fill='rgba(255,255,255,0.4)' stroke='#1f1f2b' stroke-width='1.6'/>" +
+    "</svg>"
+)}") 13 13, crosshair`;
