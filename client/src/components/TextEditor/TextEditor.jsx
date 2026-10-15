@@ -5,7 +5,7 @@ import "./TextEditor.scss";
 
 const EXTRA_WIDTH = 12;
 
-export default function TextEditor({ x, y, initialText, fontSize, color, onCommit }) {
+export default function TextEditor({ x, y, initialText, fontSize, color, isDark, onCommit }) {
   const textareaRef = useRef(null);
   const hasCommittedRef = useRef(false);
   const [text, setText] = useState(initialText);
@@ -35,7 +35,7 @@ export default function TextEditor({ x, y, initialText, fontSize, color, onCommi
   return (
     <textarea
       ref={textareaRef}
-      className="text-editor"
+      className={`text-editor ${isDark ? "text-editor--dark" : ""}`}
       value={text}
       onChange={(event) => setText(event.target.value)}
       onBlur={commit}

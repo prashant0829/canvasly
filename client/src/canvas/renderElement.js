@@ -2,6 +2,7 @@ import { TEXT_LINE_HEIGHT, TOOLS } from "../utils/constants";
 import { normalizeBounds } from "../utils/geometry";
 import { getFont } from "../utils/text";
 import { addPenStroke } from "./penStroke";
+import { hasFill, renderFill } from "./renderFill";
 import { createSeededRandom } from "./seededRandom";
 import {
   addSketchArrow,
@@ -63,6 +64,8 @@ export function renderElement(context, element) {
     renderText(context, element);
     return;
   }
+
+  if (hasFill(element)) renderFill(context, element);
 
   context.save();
   context.strokeStyle = element.strokeColor;

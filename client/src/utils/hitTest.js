@@ -1,4 +1,5 @@
 import {
+  CLOSED_SHAPE_TOOLS,
   HANDLE_HIT_RADIUS,
   HIT_TOLERANCE,
   RESIZE_HANDLES,
@@ -74,9 +75,28 @@ function isPointOnEllipse(element, point) {
   return Math.abs(distanceFromCenter - 1) * Math.min(radiusX, radiusY) <= HIT_TOLERANCE;
 }
 
+function isFilled(element) {
+  return CLOSED_SHAPE_TOOLS.includes(element.type) && element.backgroundColor !== "transparent";
+}
+
+function isPointInsideClosedShape(element, point) {
+  const bounds = normalizeBounds(element);
+  const radiusX = bounds.width / 2;
+  const radiusY = bounds.height / 2;
+  if (radiusX === 0 || radiusY === 0) return false;
+
+  const offsetX = Math.abs(point.x - (bounds.x + radiusX)) / radiusX;
+  const offsetY = Math.abs(point.y - (bounds.y + radiusY)) / radiusY;
+
+  if (element.type === TOOLS.ELLIPSE) return Math.hypot(offsetX, offsetY) <= 1;
+  if (element.type === TOOLS.DIAMOND) return offsetX + offsetY <= 1;
+  return offsetX <= 1 && offsetY <= 1;
+}
+
 export function isPointOnElement(element, point) {
-  if (element.type === TOOLS.ELLIPSE) return isPointOnEllipse(element, point);
   if (element.type === TOOLS.TEXT) return isPointInsideBounds(element, point);
+  if (isFilled(element) && isPointInsideClosedShape(element, point)) return true;
+  if (element.type === TOOLS.ELLIPSE) return isPointOnEllipse(element, point);
 
   return getOutlineSegments(element).some(
     ([start, end]) => distanceToSegment(point, start, end) <= HIT_TOLERANCE

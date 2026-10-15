@@ -1,3 +1,5 @@
+@use "../../styles/variables" as *;
+
 .text-editor {
   position: absolute;
   margin: 0;
@@ -9,4 +11,8 @@
   resize: none;
   overflow: hidden;
   white-space: pre;
+
+  &--dark {
+    filter: $dark-canvas-filter;
+  }
 }

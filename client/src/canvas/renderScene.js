@@ -21,7 +21,8 @@ export function renderScene(context, width, height, scene) {
     .filter((element) => element.id !== hiddenElementId)
     .forEach((element) => {
       const isFaded = fadedElementIds.includes(element.id);
-      context.globalAlpha = isFaded ? ERASER_FADED_OPACITY : 1;
+      const elementOpacity = (element.opacity ?? 100) / 100;
+      context.globalAlpha = elementOpacity * (isFaded ? ERASER_FADED_OPACITY : 1);
       renderElement(context, element);
     });
   context.globalAlpha = 1;

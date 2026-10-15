@@ -9,7 +9,7 @@ import {
 import { normalizeBounds } from "./geometry";
 import { measureText } from "./text";
 
-function createBaseElement(type, x, y) {
+function createBaseElement(type, x, y, style) {
   return {
     id: crypto.randomUUID(),
     type,
@@ -18,19 +18,19 @@ function createBaseElement(type, x, y) {
     width: 0,
     height: 0,
     seed: Math.floor(Math.random() * 2 ** 31),
-    ...DEFAULT_ELEMENT_STYLE,
+    ...style,
   };
 }
 
-export function createElement(type, x, y) {
-  const element = createBaseElement(type, x, y);
+export function createElement(type, x, y, style = DEFAULT_ELEMENT_STYLE) {
+  const element = createBaseElement(type, x, y, style);
   if (type === TOOLS.PEN) element.points = [{ x: 0, y: 0 }];
   return element;
 }
 
-export function createTextElement(x, y, text) {
+export function createTextElement(x, y, text, style = DEFAULT_ELEMENT_STYLE) {
   return {
-    ...createBaseElement(TOOLS.TEXT, x, y),
+    ...createBaseElement(TOOLS.TEXT, x, y, style),
     text,
     fontSize: DEFAULT_FONT_SIZE,
     ...measureText(text, DEFAULT_FONT_SIZE),

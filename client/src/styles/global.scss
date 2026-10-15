@@ -16,6 +16,17 @@
   box-sizing: border-box;
 }
 
+:root[data-theme="dark"] {
+  --color-background: #121212;
+  --color-surface: rgba(32, 32, 40, 0.82);
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-text: #ececf1;
+  --color-text-muted: #9b9aa6;
+  --color-accent: #a79cff;
+  --color-accent-soft: rgba(167, 156, 255, 0.18);
+  --color-hover: rgba(255, 255, 255, 0.08);
+}
+
 html,
 body,
 #root {

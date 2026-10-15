@@ -21,9 +21,23 @@ export const DRAWING_TOOLS = [
 
 export const DEFAULT_ELEMENT_STYLE = {
   strokeColor: "#1f1f2b",
+  backgroundColor: "transparent",
+  fillStyle: "hachure",
   strokeWidth: 2,
   roughness: 1,
+  opacity: 100,
 };
+
+export const STROKE_COLORS = ["#1f1f2b", "#e03131", "#2f9e44", "#1971c2", "#f08c00"];
+export const BACKGROUND_COLORS = ["transparent", "#ffc9c9", "#b2f2bb", "#a5d8ff", "#ffec99"];
+export const STROKE_WIDTHS = [1, 2, 4];
+export const ROUGHNESS_LEVELS = [0, 1, 2];
+export const FILL_STYLES = ["hachure", "solid"];
+
+export const CLOSED_SHAPE_TOOLS = [TOOLS.RECTANGLE, TOOLS.DIAMOND, TOOLS.ELLIPSE];
+export const ROUGH_TOOLS = [...CLOSED_SHAPE_TOOLS, TOOLS.ARROW, TOOLS.LINE];
+export const STYLE_PANEL_TOOLS = [...DRAWING_TOOLS, TOOLS.TEXT];
+export const THEME_STORAGE_KEY = "canvasly-theme";
 
 export const MIN_SHAPE_SIZE = 4;
 

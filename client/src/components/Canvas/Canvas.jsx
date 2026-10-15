@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { renderScene } from "../../canvas/renderScene";
 import {
-  DEFAULT_ELEMENT_STYLE,
   DEFAULT_FONT_SIZE,
   DRAWING_TOOLS,
   ERASER_CURSOR,
@@ -37,6 +36,8 @@ function getViewportSize() {
 
 export default function Canvas({
   activeTool,
+  currentStyle,
+  theme,
   elements,
   selectedIds,
   onElementAdded,
@@ -135,6 +136,7 @@ export default function Canvas({
       y: point.y,
       text: "",
       fontSize: DEFAULT_FONT_SIZE,
+      color: currentStyle.strokeColor,
     });
   }
 
@@ -145,6 +147,7 @@ export default function Canvas({
       y: element.y,
       text: element.text,
       fontSize: element.fontSize,
+      color: element.strokeColor,
     });
   }
 
@@ -167,7 +170,7 @@ export default function Canvas({
     }
 
     if (text.trim() !== "") {
-      onElementAdded(createTextElement(editor.x, editor.y, text));
+      onElementAdded(createTextElement(editor.x, editor.y, text, currentStyle));
     }
   }
 
@@ -279,7 +282,7 @@ export default function Canvas({
     event.currentTarget.setPointerCapture(event.pointerId);
 
     if (isDrawingTool) {
-      setDraftElement(createElement(activeTool, point.x, point.y));
+      setDraftElement(createElement(activeTool, point.x, point.y, currentStyle));
       return;
     }
 
@@ -398,7 +401,7 @@ export default function Canvas({
     <>
       <canvas
         ref={canvasRef}
-        className="canvas"
+        className={`canvas ${theme === "dark" ? "canvas--dark" : ""}`}
         style={{ cursor: getCursor() }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -412,7 +415,8 @@ export default function Canvas({
           y={textEditor.y}
           initialText={textEditor.text}
           fontSize={textEditor.fontSize}
-          color={DEFAULT_ELEMENT_STYLE.strokeColor}
+          color={textEditor.color}
+          isDark={theme === "dark"}
           onCommit={commitText}
         />
       )}

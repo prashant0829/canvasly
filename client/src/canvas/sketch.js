@@ -39,7 +39,7 @@ export function addSketchLine(context, x1, y1, x2, y2, random, roughness) {
   }
 }
 
-function pointAlong(from, to, distance) {
+export function pointAlong(from, to, distance) {
   const length = Math.hypot(to.x - from.x, to.y - from.y);
   if (length === 0) return from;
   return {
@@ -48,7 +48,7 @@ function pointAlong(from, to, distance) {
   };
 }
 
-function getCornerRadius({ width, height }) {
+export function getCornerRadius({ width, height }) {
   return Math.min(MAX_CORNER_RADIUS, CORNER_RADIUS_RATIO * Math.min(width, height));
 }
 

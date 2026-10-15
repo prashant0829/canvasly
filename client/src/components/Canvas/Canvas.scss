@@ -1,3 +1,5 @@
+@use "../../styles/variables" as *;
+
 .canvas {
   position: absolute;
   inset: 0;
@@ -5,4 +7,8 @@
   height: 100%;
   display: block;
   touch-action: none;
+
+  &--dark {
+    filter: $dark-canvas-filter;
+  }
 }
