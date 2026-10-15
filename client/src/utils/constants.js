@@ -41,3 +41,29 @@ export const GRID_SIZE = 28;
 export const GRID_DOT_RADIUS = 1.1;
 export const GRID_DOT_COLOR = "#d9d6d0";
 export const CANVAS_BACKGROUND = "#faf9f7";
+
+export const SELECTION_COLOR = "#6d5efc";
+export const MARQUEE_FILL = "rgba(109, 94, 252, 0.08)";
+export const SELECTION_PADDING = 8;
+export const HANDLE_SIZE = 8;
+export const HANDLE_HIT_RADIUS = 10;
+export const HIT_TOLERANCE = 8;
+
+export const RESIZE_HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+
+export const HANDLE_CURSORS = {
+  nw: "nwse-resize",
+  se: "nwse-resize",
+  ne: "nesw-resize",
+  sw: "nesw-resize",
+  n: "ns-resize",
+  s: "ns-resize",
+  e: "ew-resize",
+  w: "ew-resize",
+};
+
+export const INTERACTIONS = {
+  MOVE: "move",
+  RESIZE: "resize",
+  MARQUEE: "marquee",
+};
