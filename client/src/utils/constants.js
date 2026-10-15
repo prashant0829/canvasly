@@ -118,3 +118,11 @@ export const COALESCE_INTERVAL_MS = 800;
 export const PASTE_OFFSET = 20;
 export const NUDGE_STEP = 1;
 export const NUDGE_STEP_LARGE = 10;
+
+export const SCENE_STORAGE_KEY = "canvasly-scene";
+export const SCENE_FILE_TYPE = "canvasly";
+export const SCENE_FILE_VERSION = 1;
+export const SCENE_FILE_EXTENSION = ".canvasly";
+export const AUTOSAVE_DELAY_MS = 400;
+export const EXPORT_PADDING = 24;
+export const EXPORT_SCALE = 2;

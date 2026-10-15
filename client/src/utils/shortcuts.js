@@ -5,6 +5,8 @@ const MODIFIER_SHORTCUTS = {
   x: "cut",
   v: "paste",
   d: "duplicate",
+  s: "save",
+  o: "open",
   a: "selectAll",
   y: "redo",
   "]": "bringToFront",

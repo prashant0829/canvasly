@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { exportToPngBlob, exportToSvgString } from "../export/exportScene";
 import Brand from "../components/Brand/Brand";
 import Canvas from "../components/Canvas/Canvas";
+import MainMenu from "../components/MainMenu/MainMenu";
 import StylePanel from "../components/StylePanel/StylePanel";
 import ThemeToggle from "../components/ThemeToggle/ThemeToggle";
 import Toolbar from "../components/Toolbar/Toolbar";
@@ -9,6 +11,7 @@ import Welcome from "../components/Welcome/Welcome";
 import { useElementsHistory } from "../hooks/useElementsHistory";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import {
+  AUTOSAVE_DELAY_MS,
   CLOSED_SHAPE_TOOLS,
   COALESCE_INTERVAL_MS,
   DEFAULT_ELEMENT_STYLE,
@@ -17,6 +20,7 @@ import {
   NUDGE_STEP_LARGE,
   PASTE_OFFSET,
   ROUGH_TOOLS,
+  SCENE_FILE_EXTENSION,
   STYLE_PANEL_TOOLS,
   THEME_STORAGE_KEY,
   TOOLS,
@@ -24,6 +28,8 @@ import {
 } from "../utils/constants";
 import { duplicateElements, moveElement } from "../utils/elements";
 import { bringForward, bringToFront, sendBackward, sendToBack } from "../utils/layers";
+import { downloadBlob, getDateStamp, parseScene, serializeScene } from "../utils/sceneFile";
+import { loadSavedElements, saveElements } from "../utils/storage";
 import { zoomViewportAt } from "../utils/viewport";
 import "./App.scss";
 
@@ -54,7 +60,7 @@ function getInitialTheme() {
 export default function App() {
   const [activeTool, setActiveTool] = useState(TOOLS.SELECT);
   const { elements, setElements, checkpoint, undo, redo, canUndo, canRedo } =
-    useElementsHistory();
+    useElementsHistory(loadSavedElements);
   const [selectedIds, setSelectedIds] = useState([]);
   const [currentStyle, setCurrentStyle] = useState(DEFAULT_ELEMENT_STYLE);
   const [theme, setTheme] = useState(getInitialTheme);
@@ -64,6 +70,7 @@ export default function App() {
   const clipboardRef = useRef([]);
   const pasteCountRef = useRef(0);
   const lastCoalescedCheckpointRef = useRef(0);
+  const fileInputRef = useRef(null);
 
   const selectedElements = elements.filter((element) => selectedIds.includes(element.id));
   const targetTypes = selectedElements.length
@@ -87,6 +94,12 @@ export default function App() {
       // not being able to remember the theme is fine
     }
   }, [theme]);
+
+  // Remember the board in the browser; wait a moment so a drag saves once, not 60 times.
+  useEffect(() => {
+    const timeoutId = setTimeout(() => saveElements(elements), AUTOSAVE_DELAY_MS);
+    return () => clearTimeout(timeoutId);
+  }, [elements]);
 
   // A burst of changes (dragging a slider, holding an arrow key) becomes one undo step.
   function checkpointCoalesced() {
@@ -206,6 +219,52 @@ export default function App() {
     );
   }
 
+  function openFilePicker() {
+    fileInputRef.current.click();
+  }
+
+  async function loadFile(event) {
+    const file = event.target.files[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const loadedElements = parseScene(await file.text());
+      checkpoint();
+      setElements(loadedElements);
+      setSelectedIds([]);
+    } catch (error) {
+      window.alert(error.message);
+    }
+  }
+
+  function saveToFile() {
+    if (elements.length === 0) return;
+
+    const blob = new Blob([serializeScene(elements)], { type: "application/json" });
+    downloadBlob(blob, `canvasly-${getDateStamp()}${SCENE_FILE_EXTENSION}`);
+  }
+
+  async function exportPng() {
+    if (elements.length === 0) return;
+    downloadBlob(await exportToPngBlob(elements), `canvasly-${getDateStamp()}.png`);
+  }
+
+  async function exportSvg() {
+    if (elements.length === 0) return;
+
+    const markup = await exportToSvgString(elements);
+    downloadBlob(new Blob([markup], { type: "image/svg+xml" }), `canvasly-${getDateStamp()}.svg`);
+  }
+
+  function clearCanvas() {
+    if (elements.length === 0) return;
+
+    checkpoint();
+    setElements([]);
+    setSelectedIds([]);
+  }
+
   const undoChange = () => applyHistoryResult(undo());
   const redoChange = () => applyHistoryResult(redo());
   const zoomIn = () => zoomTo((zoom) => zoom * ZOOM_STEP);
@@ -230,6 +289,8 @@ export default function App() {
     zoomIn,
     zoomOut,
     resetZoom,
+    save: saveToFile,
+    open: openFilePicker,
     selectTool: changeTool,
   });
 
@@ -250,6 +311,21 @@ export default function App() {
         onCheckpoint={checkpoint}
       />
       <Toolbar activeTool={activeTool} onToolChange={changeTool} />
+      <MainMenu
+        hasElements={elements.length > 0}
+        onOpen={openFilePicker}
+        onSave={saveToFile}
+        onExportPng={exportPng}
+        onExportSvg={exportSvg}
+        onClear={clearCanvas}
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={`${SCENE_FILE_EXTENSION},application/json`}
+        onChange={loadFile}
+        hidden
+      />
       {isStylePanelVisible && (
         <StylePanel
           style={panelStyle}

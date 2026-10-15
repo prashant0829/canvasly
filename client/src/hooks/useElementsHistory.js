@@ -3,8 +3,8 @@ import { MAX_HISTORY_SIZE } from "../utils/constants";
 
 // Undo/redo by keeping old copies (snapshots) of the elements array.
 // Call checkpoint() right BEFORE a change so the current state can be restored.
-export function useElementsHistory() {
-  const [elements, setElements] = useState([]);
+export function useElementsHistory(initialElements = []) {
+  const [elements, setElements] = useState(initialElements);
   const elementsRef = useRef(elements);
   const undoStackRef = useRef([]);
   const redoStackRef = useRef([]);
