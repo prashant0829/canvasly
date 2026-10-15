@@ -32,6 +32,8 @@ export default function App() {
 
   useEffect(() => {
     function handleKeyDown(event) {
+      if (event.target instanceof HTMLTextAreaElement) return;
+
       if (event.key === "Delete" || event.key === "Backspace") {
         deleteSelectedElements();
         return;

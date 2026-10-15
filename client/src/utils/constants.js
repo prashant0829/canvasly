@@ -14,7 +14,9 @@ export const DRAWING_TOOLS = [
   TOOLS.RECTANGLE,
   TOOLS.DIAMOND,
   TOOLS.ELLIPSE,
+  TOOLS.ARROW,
   TOOLS.LINE,
+  TOOLS.PEN,
 ];
 
 export const DEFAULT_ELEMENT_STYLE = {
@@ -66,4 +68,15 @@ export const INTERACTIONS = {
   MOVE: "move",
   RESIZE: "resize",
   MARQUEE: "marquee",
+  ERASE: "erase",
 };
+
+export const FONT_FAMILY = '"Excalifont", "Caveat", "Comic Sans MS", cursive';
+export const DEFAULT_FONT_SIZE = 20;
+export const MIN_FONT_SIZE = 8;
+export const TEXT_LINE_HEIGHT = 1.25;
+
+export const ARROW_HEAD_LENGTH = 18;
+export const ARROW_HEAD_ANGLE = Math.PI / 6;
+
+export const MIN_POINT_DISTANCE = 2;

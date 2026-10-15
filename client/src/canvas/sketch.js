@@ -1,3 +1,5 @@
+import { ARROW_HEAD_ANGLE, ARROW_HEAD_LENGTH } from "../utils/constants";
+
 const LINE_PASSES = 2;
 const MAX_CORNER_RADIUS = 32;
 const CORNER_RADIUS_RATIO = 0.25;
@@ -155,4 +157,30 @@ export function addSketchEllipse(context, bounds, random, roughness) {
 
     addSmoothCurve(context, points);
   }
+}
+
+// The head is two short sketchy lines swept back from the tip.
+export function addSketchArrow(context, element, random, roughness) {
+  const endX = element.x + element.width;
+  const endY = element.y + element.height;
+  const length = Math.hypot(element.width, element.height);
+
+  addSketchLine(context, element.x, element.y, endX, endY, random, roughness);
+  if (length === 0) return;
+
+  const angle = Math.atan2(element.height, element.width);
+  const headLength = Math.min(ARROW_HEAD_LENGTH, length / 2);
+
+  [-1, 1].forEach((side) => {
+    const headAngle = angle + Math.PI + side * ARROW_HEAD_ANGLE;
+    addSketchLine(
+      context,
+      endX,
+      endY,
+      endX + Math.cos(headAngle) * headLength,
+      endY + Math.sin(headAngle) * headLength,
+      random,
+      roughness
+    );
+  });
 }

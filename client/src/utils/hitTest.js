@@ -34,15 +34,31 @@ function getOutlineSegments(element) {
       return points.map((point, index) => [point, points[(index + 1) % 4]]);
     }
     case TOOLS.LINE:
+    case TOOLS.ARROW:
       return [
         [
           { x: element.x, y: element.y },
           { x: element.x + element.width, y: element.y + element.height },
         ],
       ];
+    case TOOLS.PEN:
+      return element.points.slice(1).map((point, index) => [
+        { x: element.x + element.points[index].x, y: element.y + element.points[index].y },
+        { x: element.x + point.x, y: element.y + point.y },
+      ]);
     default:
       return [];
   }
+}
+
+function isPointInsideBounds(element, point) {
+  const { x, y, width, height } = normalizeBounds(element);
+  return (
+    point.x >= x - HIT_TOLERANCE &&
+    point.x <= x + width + HIT_TOLERANCE &&
+    point.y >= y - HIT_TOLERANCE &&
+    point.y <= y + height + HIT_TOLERANCE
+  );
 }
 
 function isPointOnEllipse(element, point) {
@@ -60,6 +76,7 @@ function isPointOnEllipse(element, point) {
 
 export function isPointOnElement(element, point) {
   if (element.type === TOOLS.ELLIPSE) return isPointOnEllipse(element, point);
+  if (element.type === TOOLS.TEXT) return isPointInsideBounds(element, point);
 
   return getOutlineSegments(element).some(
     ([start, end]) => distanceToSegment(point, start, end) <= HIT_TOLERANCE

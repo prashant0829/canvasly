@@ -12,7 +12,7 @@
   &__title {
     margin: 0;
     font-size: 84px;
-    font-weight: 700;
+    font-weight: 400;
     color: var(--color-text);
 
     @media (max-width: $breakpoint-mobile) {
@@ -23,7 +23,7 @@
   &__subtitle {
     margin: 4px 0 0;
     font-size: 28px;
-    font-weight: 500;
+    font-weight: 400;
     color: var(--color-text-muted);
   }
 }
